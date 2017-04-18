@@ -39,10 +39,13 @@ class RetraControl:
 
     # set intensity
     # Takes in integer intensity value
-    # max = 4095
+    # intensity range = 0...100 
     def set_intensity(self, intense):
+        # scale
+        full_intense = int(intense * (4095.0/100.0)) 
+    
         # 1st: invert
-        inv_intense = 4095 - intense 
+        inv_intense = 4095 - full_intense
 
         # translate inverse intensity value into two bytes
         large_byte = int(inv_intense / 256)

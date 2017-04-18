@@ -71,24 +71,42 @@ GPIO.setup(4, GPIO.IN)
 
 
 # Q? use twisted framework??? 
-
+'''
 # look for rising edge:
 t0 = time.time()
-def rise_fall():
+def rise_fall(channel): 
     # check current value:
     if(GPIO.input(4)): # rising
-        t0 = time.time()
-        t1 = t0
+	print(time.time())
+        #t0 = time.time()
+        #t1 = t0
     else: # falling 
-        t1 = time.time()
-        print(t1 - t0)
-        #if((t1 - t0) > .001):
+	print('f')
+	print(time.time())
+        #t1 = time.time()
+        #print(t1 - t0)
+        ##if((t1 - t0) > .001):
         #    update = 1 
-        t0 = t1     
-
+        #t0 = t1     
 
 GPIO.add_event_detect(4, GPIO.BOTH, callback=rise_fall)
+'''
 
+# testing:
+t0 = time.time()
+state = 0 
+while(True):
+    #print('') 
+    if(GPIO.input(4)):
+	if(state == 0):
+	    t0 = time.time()
+            state = 1
+    else: 
+        if(state == 1):
+            t1 = time.time()
+            print(t1-t0)
+            t0 = t1
+            state = 0
 
 '''
 My Idea: master thread launches rise and fall threads

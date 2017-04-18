@@ -51,17 +51,9 @@ class RetraControl:
         large_byte = int(inv_intense / 256)
         little_byte = int(inv_intense - (256 * large_byte))
 
-        print(large_byte)
-        print(little_byte) 
-
         write_intense = bytearray([240+large_byte, little_byte])
 
         write_str = str(self.prefix_byte + write_intense + self.postfix_byte)
-
-        '''
-        test_str = str(bytearray([83, 24, 3, 7, 255, 255, 80]))
-        self.port.write(test_str)
-        '''
         
         self.port.write(write_str)
         

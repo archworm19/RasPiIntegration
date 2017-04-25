@@ -11,10 +11,10 @@ import pylab as plt
 
 #### Rescaling
 # normalize to between 0 and 100 --> integers
-def norm_seq(dat):
+def norm_seq(dat, maxi=100):
     mx = sp.amax(dat)
     mn = sp.amin(dat)
-    norm_dat = (dat - mn) * (100.0 / (mx - mn))
+    norm_dat = (dat - mn) * ((1.0*maxi) / (mx - mn))
     return norm_dat.astype(sp.int0) 
 
 
@@ -90,11 +90,11 @@ if(__name__ == '__main__'):
 
     sin_dat = sin_gen(t, .1)
     sin_dat = pad(sin_dat, 25)
-    sin_dat = norm_seq(sin_dat)
+    sin_dat = norm_seq(sin_dat,20.0)
     plt.figure()
     plt.plot([i for i in range(sp.shape(sin_dat)[0])], sin_dat)
     plt.show() 
 
-    sp.save('sinp1', sin_dat)
+    sp.save('sinp1_20max', sin_dat)
     
 

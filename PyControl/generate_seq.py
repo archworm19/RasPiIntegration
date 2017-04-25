@@ -15,7 +15,7 @@ def norm_seq(dat):
     mx = sp.amax(dat)
     mn = sp.amin(dat)
     norm_dat = (dat - mn) * (100.0 / (mx - mn))
-    return full_dat.astype(sp.int0) 
+    return norm_dat.astype(sp.int0) 
 
 
 #### Padding
@@ -27,7 +27,7 @@ def pad(dat, pad_size):
 
 #### Sin
 def sin_gen(t, scale):
-    return sp.sin(t * scale) 
+    return sp.sin(t * scale) + 1.0
 
 
 #### 1st order ~ supplied patterns
@@ -67,16 +67,34 @@ def order1_patterns(t, patterns, pips, nmag0, nmag1):
 
 if(__name__ == '__main__'):
 
-    t = sp.arange(0,500,1)
+    t = sp.arange(0,300,1)
     patterns = [sp.array([1.0, -.5, 1.0, -.5, 1.0, -2.0])]
     print(sp.sum(patterns[0]))
     pips = [.05]
-    nmag0 = 2.0
+    nmag0 = 0.0
     nmag1 = 0.0
+
+    '''
     dat = order1_patterns(t, patterns, pips, nmag0, nmag1)      
+    # pad:
+    dat = pad(dat, 25)    
+    dat = norm_seq(dat)
     plt.figure()
-    plt.plot(t, dat)
+    plt.plot([i for i in range(sp.shape(dat)[0])], dat)
     plt.show() 
 
+    sp.save('jagged_pattern', dat)
 
+    '''
+
+
+    sin_dat = sin_gen(t, .1)
+    sin_dat = pad(sin_dat, 25)
+    sin_dat = norm_seq(sin_dat)
+    plt.figure()
+    plt.plot([i for i in range(sp.shape(sin_dat)[0])], sin_dat)
+    plt.show() 
+
+    sp.save('sinp1', sin_dat)
+    
 

@@ -6,6 +6,7 @@ Generate Sequences of Intensity Values
 '''
 
 import scipy as sp
+from scipy import random
 import pylab as plt
 
 
@@ -18,6 +19,7 @@ def norm_seq(dat, maxi=100):
     return norm_dat.astype(sp.int0) 
 
 
+
 #### Padding
 # add 0s to beginning and end
 def pad(dat, pad_size):
@@ -25,9 +27,11 @@ def pad(dat, pad_size):
     return sp.hstack((zer, dat, zer))
 
 
+
 #### Sin
 def sin_gen(t, scale):
     return sp.sin(t * scale) + 1.0
+
 
 
 #### 1st order ~ supplied patterns
@@ -63,38 +67,63 @@ def order1_patterns(t, patterns, pips, nmag0, nmag1):
     order0 = order0 + noise0 
     return order0 
 
+
+
+#### Pattern vs Sorted version of pattern 
+# pp = probability of pattern
+# ps = probability of shuffled pattern 
+# NOTE: doesn't allow for overlapping patterns
+def pattern_vs_shuffled(t, pattern, pp, ps):
+    patl = len(pattern)
+    seq = sp.zeros((len(t)))
+    i = 0
+    while(i < (len(t) - patl)):
+        r = sp.rand()
+        if(r < pp):
+            seq[i:i+patl] = seq[i:i+patl] + pattern
+            i = i + patl
+            continue
+        if(r < (pp + ps)): 
+            # copy and shuffle
+            pcop = sp.copy(pattern)
+            random.shuffle(pcop)
+            seq[i:i+patl] = seq[i:i+patl] + pcop
+            i = i + patl
+            continue
+        i += 1
+    return seq   
+
+
               
 
 if(__name__ == '__main__'):
 
     t = sp.arange(0,300,1)
-    patterns = [sp.array([1.0, -.5, 1.0, -.5, 1.0, -2.0])]
-    print(sp.sum(patterns[0]))
-    pips = [.05]
-    nmag0 = 0.0
-    nmag1 = 0.0
+    padl = 25
 
     '''
-    dat = order1_patterns(t, patterns, pips, nmag0, nmag1)      
-    # pad:
-    dat = pad(dat, 25)    
-    dat = norm_seq(dat)
-    plt.figure()
-    plt.plot([i for i in range(sp.shape(dat)[0])], dat)
-    plt.show() 
-
-    sp.save('jagged_pattern', dat)
-
-    '''
-
-
     sin_dat = sin_gen(t, .1)
-    sin_dat = pad(sin_dat, 25)
+    sin_dat = pad(sin_dat, padl) 
     sin_dat = norm_seq(sin_dat,20.0)
     plt.figure()
     plt.plot([i for i in range(sp.shape(sin_dat)[0])], sin_dat)
     plt.show() 
-
     sp.save('sinp1_20max', sin_dat)
-    
+    '''
+
+    # pattern vs shuffled:
+    pattern = sp.array([.5,.5,.5,1.0,1.0,1.0,.5,.5,.5])
+    pp = .04
+    ps = .04
+    pvs = pattern_vs_shuffled(t, pattern, pp, ps)
+    # pad and normalize:
+    pvs = pad(pvs, padl)
+    pvs = norm_seq(pvs, 20.0)
+    plt.figure()
+    plt.plot([i for i in range(len(pvs))], pvs)
+    plt.show()
+    sp.save('pvs_pp' + str(int(pp*100)) + '_ps' + str(int(ps*100)), pvs)
+
+
+        
 

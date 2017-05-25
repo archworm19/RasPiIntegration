@@ -100,9 +100,11 @@ def two_pattern_comp(seq_len, pat_len, sum_intense, p1, p2, var):
     # generate the random patterns:
     pat1 = sp.rand(1, pat_len)
     pat1 = gaussian_filter(pat1, var)
+    pat1 = pat1 - sp.amin(pat1)
     pat1 = pat1 * (sum_intense / sp.sum(pat1))
     pat2 = sp.rand(1, pat_len)
     pat2 = gaussian_filter(pat2, var)
+    pat2 = pat2 - sp.amin(pat2) 
     pat2 = pat2 * (sum_intense / sp.sum(pat2))
 
     # iterate thru full sequence --> write patterns
@@ -124,7 +126,7 @@ if(__name__ == '__main__'):
     padl = 25
     seq_len = 950
     pat_len = 25
-    sum_intense = 200
+    sum_intense = 500
     p1 = .2
     p2 = .2
     var = 5.0  

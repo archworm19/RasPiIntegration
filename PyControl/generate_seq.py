@@ -8,6 +8,7 @@ Generate Sequences of Intensity Values
 import scipy as sp
 from scipy import random
 import pylab as plt
+from scipy.ndimage.filters import gaussian_filter
 
 
 #### Rescaling
@@ -94,36 +95,48 @@ def pattern_vs_shuffled(t, pattern, pp, ps):
     return seq   
 
 
-              
+#### 2 Rand Patterns ####
+def two_pattern_comp(seq_len, pat_len, sum_intense, p1, p2, var):
+    # generate the random patterns:
+    pat1 = sp.rand(1, pat_len)
+    pat1 = gaussian_filter(pat1, var)
+    pat1 = pat1 * (sum_intense / sp.sum(pat1))
+    pat2 = sp.rand(1, pat_len)
+    pat2 = gaussian_filter(pat2, var)
+    pat2 = pat2 * (sum_intense / sp.sum(pat2))
+
+    # iterate thru full sequence --> write patterns
+    seq = sp.zeros((seq_len))
+    ind = 0
+    while(ind + pat_len < seq_len):
+        p = sp.rand()
+        if(p < p1):
+            seq[ind:ind + pat_len] = pat1[:]
+        elif(p < p1 + p2):
+            seq[ind:ind + pat_len] = pat2[:]
+        ind += pat_len
+    return seq              
+
+
 
 if(__name__ == '__main__'):
 
-    t = sp.arange(0,300,1)
     padl = 25
+    seq_len = 950
+    pat_len = 25
+    sum_intense = 200
+    p1 = .2
+    p2 = .2
+    var = 5.0  
+    tp = two_pattern_comp(seq_len, pat_len, sum_intense, p1, p2, var) 
 
-    '''
-    sin_dat = sin_gen(t, .1)
-    sin_dat = pad(sin_dat, padl) 
-    sin_dat = norm_seq(sin_dat,20.0)
+    # pad:
+    tp = pad(tp, padl)
+
     plt.figure()
-    plt.plot([i for i in range(sp.shape(sin_dat)[0])], sin_dat)
+    plt.plot([i for i in range(len(tp))], tp)
     plt.show() 
-    sp.save('sinp1_20max', sin_dat)
-    '''
 
-    # pattern vs shuffled:
-    pattern = sp.array([.5,.5,.5,1.0,1.0,1.0,.5,.5,.5])
-    pp = .04
-    ps = .04
-    pvs = pattern_vs_shuffled(t, pattern, pp, ps)
-    # pad and normalize:
-    pvs = pad(pvs, padl)
-    pvs = norm_seq(pvs, 20.0)
-    plt.figure()
-    plt.plot([i for i in range(len(pvs))], pvs)
-    plt.show()
-    sp.save('pvs_pp' + str(int(pp*100)) + '_ps' + str(int(ps*100)), pvs)
-
-
+    sp.save('two_pattern_comp', tp)
         
 

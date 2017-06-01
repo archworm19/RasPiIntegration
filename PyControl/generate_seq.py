@@ -9,6 +9,7 @@ import scipy as sp
 from scipy import random
 import pylab as plt
 from scipy.ndimage.filters import gaussian_filter
+from scipy.misc import factorial 
 
 
 #### Rescaling
@@ -120,25 +121,79 @@ def two_pattern_comp(seq_len, pat_len, sum_intense, p1, p2, var):
     return seq              
 
 
-
-if(__name__ == '__main__'):
-
-    padl = 25
-    seq_len = 950
-    pat_len = 25
-    sum_intense = 500
-    p1 = .2
-    p2 = .2
-    var = 5.0  
-    tp = two_pattern_comp(seq_len, pat_len, sum_intense, p1, p2, var) 
-
-    # pad:
-    tp = pad(tp, padl)
-
+#### Taylor series pattern creation
+# specify num_t
+# specify taylor series parameters
+# set minimum to zero
+def taylor_gen(num_t, taylor_params):
+    t = sp.arange(0, num_t, 1.0)
+    x = sp.zeros(sp.shape(t))
+    for i in range(len(taylor_params)):
+        x = x + (taylor_params[i]/factorial(i)) * (t**i)
+        print((taylor_params[i]/factorial(i))) 
     plt.figure()
-    plt.plot([i for i in range(len(tp))], tp)
+    plt.plot(t,x)
     plt.show() 
-
-    sp.save('two_pattern_comp', tp)
         
 
+#### Root-Based Polynomial Creation ####
+# specify num_t
+# specify roots
+def poly_root_gen(num_t, roots, end_sign=1):
+    t = sp.arange(0, num_t, 1.0) - (num_t/2)  
+    x = sp.ones(sp.shape(t))
+    for root in roots:
+        x = x * (t - root)
+    x = end_sign * x
+    # move min to 0 and normalize:
+    x = x - sp.amin(x)
+    x = x / sp.amax(x) 
+    return x 
+
+
+#### Pattern Tiling of Sequence
+# put patterns into sequence with some probability
+# Assumes all patterns have the same length
+def pattern_tile(num_t, patterns, probs):
+    if(sp.sum(probs) > 1):
+        print('illegal probs')
+        return 
+    cs = sp.cumsum(probs) 
+    print(cs) 
+    plen = len(patterns[0]) 
+    num_iters = int(num_t / plen)
+    x = sp.zeros((num_t))
+    for i in range(num_iters):
+        seq_start = i * plen
+        seq_end = (i+1) * plen
+        r = sp.rand()
+        print(r) 
+        ind = sp.where(r < cs)[0]
+        if(len(ind) <= 0):
+            continue
+        pind = ind[0]
+        print(pind)  
+        x[seq_start:seq_end] = patterns[pind] 
+    return x 
+
+
+
+
+if(__name__ == '__main__'):
+    
+    num_t = 50
+    roots = [-22, -20, -3, 3, 20, 22]
+    x1 = poly_root_gen(num_t, roots, -1) 
+    roots = [-22, -20, -10, 10, 20, 22]
+    x2 = poly_root_gen(num_t, roots, -1) 
+
+    probs = sp.array([.25, .25]) 
+    pat = pattern_tile(1000, [x1, x2], probs)
+
+    pat = pad(pat, 25) * 25.0
+
+    plt.figure()
+    plt.plot([i for i in range(len(pat))], pat)
+    plt.show() 
+
+    sp.save('two_pattern_poly.npy', pat.astype(int))

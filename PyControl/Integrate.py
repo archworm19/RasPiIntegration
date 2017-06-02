@@ -39,8 +39,8 @@ def integrate(fn):
         else:
             if(state == 1):
                 t1 = time.time()
-                print(t1-t0)
                 if((t1-t0) > .001):
+                    print(intensities[ind])
                     rc.set_intensity(intensities[ind])
                     ind += 1          
                 t0 = t1
@@ -48,7 +48,7 @@ def integrate(fn):
 
 
 if(__name__ == '__main__'):
-    fn = 'test_seq.npy' 
+    fn = 'two_pattern_poly_80.npy' 
     integrate(fn)
 
 

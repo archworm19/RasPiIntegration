@@ -48,7 +48,9 @@ def integrate(fn):
 
 
 if(__name__ == '__main__'):
-    fn = 'two_pattern_poly_80.npy' 
+    #fn = 'two_pattern_poly_80.npy' 
+    #fn = 'two_pattern_poly.npy'
+    fn = 'sinp1.npy'
     integrate(fn)
 
 

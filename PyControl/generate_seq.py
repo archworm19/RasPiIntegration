@@ -148,7 +148,21 @@ def poly_root_gen(num_t, roots, end_sign=1):
     # move min to 0 and normalize:
     x = x - sp.amin(x)
     x = x / sp.amax(x) 
-    return x 
+    return x
+
+
+#### Gaussian Mixture Pattern ####
+
+def gauss_func(x, mu, stddev, scale):
+    return scale * sp.exp(-((x - mu)**2.0) / (2*(stddev**2.0)))
+
+# recieves 3 lists: (mus, stddevs, scales)
+def gauss_mix_pattern(t, mus, stddevs, scales):
+    stim = sp.zeros((len(t)))
+    for i in range(len(mus)):
+        stim += gauss_func(t, mus[i], stddevs[i], scales[i])
+    return stim  
+
 
 
 #### Pattern Tiling of Sequence
@@ -182,18 +196,34 @@ def pattern_tile(num_t, patterns, probs):
 if(__name__ == '__main__'):
     
     num_t = 50
-    roots = [-22, -20, -3, 3, 20, 22]
-    x1 = poly_root_gen(num_t, roots, -1) 
-    roots = [-22, -20, -10, 10, 20, 22]
-    x2 = poly_root_gen(num_t, roots, -1) 
+    t = sp.array([i for i in range(num_t)])   
+ 
+    # stim 1:
+    mus1 = [10, 20, 40]
+    stddevs1 = [2.0, 2.0, 2.0]
+    scales1 = [50, 90, 50]
+    stim1 = gauss_mix_pattern(t, mus1, stddevs1, scales1)
 
-    probs = sp.array([.25, .25]) 
-    pat = pattern_tile(1000, [x1, x2], probs)
-
-    pat = pad(pat, 25) * 25.0
+    # stim 2:
+    mus2 = [10, 30, 40]
+    stddevs2 = [2.0, 2.0, 2.0]
+    scales2 = [50, 90, 50]
+    stim2 = gauss_mix_pattern(t, mus2, stddevs2, scales2)
 
     plt.figure()
-    plt.plot([i for i in range(len(pat))], pat)
+    plt.plot(stim1)
+    plt.plot(stim2)
     plt.show() 
 
-    sp.save('two_pattern_poly.npy', pat.astype(int))
+    super_stim = pattern_tile(1000, [stim1, stim2], [.25, .25])
+
+    plt.figure()
+    plt.plot(super_stim)
+    plt.show()
+
+    sp.save('two_pattern_gauss', super_stim) 
+
+
+
+
+

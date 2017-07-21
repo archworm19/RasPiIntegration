@@ -28,6 +28,8 @@ class RetraControl:
         self.prefix_byte = bytearray([83, 24, 3, 7])
         self.postfix_byte = bytearray([80])
 
+        self.state = 0
+
 
     def red_on(self):
         self.port.write(self.red_on_str)
@@ -41,6 +43,14 @@ class RetraControl:
     # Takes in integer intensity value
     # intensity range = 0...100 
     def set_intensity(self, intense):
+        if(intense <= .9):
+            self.red_off()
+            self.state = 0
+            return
+        if(self.state == 0):
+            self.red_on()
+            self.state = 1
+
         # scale
         full_intense = int(intense * (4095.0/100.0)) 
     

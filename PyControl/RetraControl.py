@@ -52,16 +52,16 @@ class RetraControl:
             self.state = 1
 
         # scale
-        full_intense = int(intense * (4095.0/100.0)) 
+        full_intense = intense * (255.0/100.0)
     
         # 1st: invert
-        inv_intense = 4095 - full_intense
+        inv_intense = 255.0 - full_intense
 
         # translate inverse intensity value into two bytes
-        large_byte = int(inv_intense / 256)
-        little_byte = int(inv_intense - (256 * large_byte))
+        large_byte = int(inv_intense / 16)
+        little_byte = int(inv_intense - (16 * large_byte))
 
-        write_intense = bytearray([240+large_byte, little_byte])
+        write_intense = bytearray([240+large_byte, little_byte*16])
 
         write_str = str(self.prefix_byte + write_intense + self.postfix_byte)
         

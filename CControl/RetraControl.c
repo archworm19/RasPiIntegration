@@ -14,6 +14,8 @@
  * TODO: get rid of length params and shit --> use sizeof
  * ...and read till eof
  *
+ *
+ *
  */
 
 #include <wiringPi.h>
@@ -27,6 +29,7 @@
 // 3 Comms: (1) Serial to Retra, (2) TTL output to Retra, (3) TTL input from SPIM
 // returns file descriptor for serial port
 // red_intense should be in hex format (hmmm...could maybe be in decimal as well) 
+
 int init_comm(){
     // broadcom numbering:
     wiringPiSetupGpio();
@@ -74,22 +77,22 @@ void retra_OFF(){
 
 
 // TODO: convert int intensity values to pairs of unsigned chars:
-// assumes uc declared properly and signals are in representable range
-void convert_signal_uc(int * sig, unsigned char * sig_uc){
+// assumes uc declared properly and signals are in representable range (0-100)
+void convert_signal_uc(int * sig, int sig_len, unsigned char * sig_uc){
     int i;
-    int full_intense; int inv_intense; 
-    unsigned char large_byte; unsigned char little byte;
-    for(i=0; i<(sizeof(sig)/4); i++){
+    float full_intense; float inv_intense; 
+    unsigned char large_byte; unsigned char little_byte;
+    for(i=0; i<sig_len; i++){
         // full intensity:
-        full_intense = sig[i] * (4095/100); 
+        full_intense = (float)sig[i] * (255.0/100.0); 
         // invert it:
-        inv_intense = 4095 - full_intense;
+        inv_intense = 255.0 - full_intense;
         // convert to 2 unsigned chars:
-        large_byte = inv_intense / 256;
-        little_byte = inv_intense - (256 * large_byte);
+        large_byte = ((int)inv_intense) / 16; 
+        little_byte = ((int)inv_intense) - (16 * large_byte);
         large_byte = 240 + large_byte; 
         sig_uc[2*i] = large_byte;
-        sig_uc[2*i + 1] = little_byte; 
+        sig_uc[2*i + 1] = little_byte * 16;  
     }
 }
 
@@ -113,8 +116,7 @@ void write_retra_serial(int fd, unsigned char * sig_uc, int ind){
 // TODO: execute pulse...take in pulse profile of 1s and 0s 
 // pulse_len = length of pulse_profile
 // time_scale = switching time in milliseconds 
-void exec_pulse(int * pulse_profile, int time_scale){
-    int pulse_len = sizeof(pulse_profile) / 4; 
+void exec_pulse(int * pulse_profile, int time_scale, int pulse_len){
     ind = 0;
     unsigned int t0;
     unsigned int t1;
@@ -145,12 +147,11 @@ void exec_pulse(int * pulse_profile, int time_scale){
 // TODO: figure out time_scale_sub from time_scale_super and len of pulse profile
 // execute pulses when seq > 0 
 // update intensity when it changes:
-void exec_experiment(int fd, unsigned char * seq, int time_scale_super, int * pulse_profile){
+void exec_experiment(int fd, unsigned char * seq, int time_scale_super, int * pulse_profile, int seq_len, int pulse_len){
     ind = 0;
     unsigned int t0;
     unsigned int t1; 
-    int seq_len = sizeof(seq) / 2;
-    int time_scale_sub = seq_len / (sizeof(pulse_profile)/4); 
+    int time_scale_sub = seq_len / pulse_len; 
     unsigned char byte1; unsigned char byte2; 
     unsigned char old_byte1 = 255; unsigned char old_byte2 = 240; 
     int seq_val;
@@ -182,7 +183,7 @@ void exec_experiment(int fd, unsigned char * seq, int time_scale_super, int * pu
             // if stim strength > 0 --> execute pulse:
             // TODO: not sure if this is a legal comparison
             if(byte1 > 0 || byte2 > 0){ 
-                exec_pulse(pulse_profile, time_scale_sub);         
+                exec_pulse(pulse_profile, time_scale_sub, pulse_len); 
             }
         }
     }
@@ -194,19 +195,27 @@ void exec_experiment(int fd, unsigned char * seq, int time_scale_super, int * pu
 // TODO: configure run parameters
 // TODO: easiest way to read in data?
 // read comma separated file into array of integers:
-int[] read_csf(FILE * input){
+int read_csf(const char * fn, int ** seq){
+    FILE * input = fopen(fn, "r"); 
+
     // iterate thru once to get count: TODO: do we need an array to write into?
     int count = 0;
-    while(fscanf(input,"%d") != EOF){
+    int holder_val;
+    while(fscanf(input,"%d%*c",&holder_val) == 1){
         count ++;
     }
+
+    // reopen file:
+    input = fopen(fn, "r"); 
+
     // iterate thru to get data:
-    int seq[count]; 
+    *seq = (int *)malloc(count * sizeof(int)); 
     int i = 0;
     for(i=0; i<count; i++){
-        fscanf(fn, "%d", seq[i]); 
+        fscanf(input, "%d%*c", &((*seq)[i])); 
     }
-    return seq; 
+
+    return count; 
 }
 
 
@@ -218,27 +227,51 @@ int[] read_csf(FILE * input){
 void master(int seq_tscale){
     // set up raspi:
     int fd; 
-    fd = init_comm(); 
-    // calculate pulse_len by comparing timescales:
-    int pulse_len = (seq_tscale / pulse_tscale); // TODO: is this consistent with pulse execution?
+    //Tfd = init_comm(); 
     
     // load in pulse profile:
-    FILE * pulse_file = fopen("pulse_profile.txt", "r");
-    int pulse_profile[];
-    pulse_profile = read_csf(pulse_file);
+    int * pulse_profile;
+    int pulse_len;
+    pulse_len = read_csf("pulse_profile.txt", &pulse_profile);
+    
     // load in sequence:
-    FILE * seq_file = fopen("sequence.txt", "r");
-    int seq[];
-    seq = read_csf(seq_file);
+    int * seq;
+    int seq_len;
+    seq_len = read_csf("sequence.txt", &seq); 
 
+    printf("pulse_len = %d\n", pulse_len);
+    printf("seq_len = %d\n", seq_len); 
+
+    
+    // Testing: read the sequences:
+    int i;
+    for(i=0; i<pulse_len; i++){
+        printf("%d\n", pulse_profile[i]); 
+    }
+    for(i=0; i<seq_len; i++){
+        printf("%d\n", seq[i]); 
+    } 
+    
+
+    
     // convert sequence to unsigned char:
-    unsigned char seq_uc[2 * (sizeof(seq)/4)];
-    convert_signal_uc(seq, seq_uc);
+    unsigned char seq_uc[2 * seq_len]; 
+    convert_signal_uc(seq, seq_len, seq_uc);
+
+    // TESTING: print the conversion:
+    for(i=0; i<seq_len; i++){
+        printf("%u,%u\n", seq_uc[2*i], seq_uc[2*i + 1]); 
+    }
+    
+
+    // TODO: wait for SPIM communication...synchronizes
+    int c;
+    while(!read_SPIM()){
+        c = 1; 
+    }
 
     // begin execution:
-    exec_experiment(seq, seq_len, seq_tscale, pulse_profile, pulse_len, pulse_tscale); 
-
-    exec_experiment(fd, seq_uc, seq_tscale, pulse_profile)
+    exec_experiment(fd, seq_uc, seq_tscale, pulse_profile, seq_len, pulse_len); 
 
 }
 

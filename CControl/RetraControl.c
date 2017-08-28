@@ -11,9 +11,7 @@
  *      (4) Inner Loop / Pulse: loop thru the pulse protocol
  *
  *
- * TODO: get rid of length params and shit --> use sizeof
- * ...and read till eof
- *
+ * NOTE: compile with -lwiringPi
  *
  *
  */
@@ -36,11 +34,11 @@ int init_comm(){
     // Input pin from SPIM:
     pinMode(4, INPUT);
     // Output pin to Retra (for TTL):
-    pinMode(TEMP, OUTPUT); // TODO: which pin for output?
+    pinMode(22, OUTPUT); // which pin for output? Use 22...not too far from 4
     // Initialize Serial Communication with Retra: TODO:
     int fd; 
     fd = serialOpen("/dev/ttyUSB0", 9600); // TODO: correct BAUD?   
-    printf(succ); 
+    printf("fd = %d\n", fd); 
     // TODO: initialize and turn Retra on / set intensity to 0:
     unsigned char init1[] = {87, 2, 170, 80}; 
     unsigned char init2[] = {87, 3, 170, 80}; 
@@ -51,8 +49,8 @@ int init_comm(){
     serialPuts(fd, red_on); 
     serialPuts(fd, red0);
     // Set Retra to inactive high:
-    digitalWrite(TEMP, HIGH);
-    return fd
+    digitalWrite(22, HIGH);
+    return fd;
 }
 
 
@@ -67,11 +65,11 @@ int read_SPIM(){
 
 // TODO: write TTL to Retra:
 void retra_ON(){
-    digitalWrite(TEMP, LOW);
+    digitalWrite(22, LOW);
 }
 
 void retra_OFF(){
-    digitalWrite(TEMP, HIGH); 
+    digitalWrite(22, HIGH); 
 }
 
 
@@ -100,15 +98,10 @@ void convert_signal_uc(int * sig, int sig_len, unsigned char * sig_uc){
 // TODO: write intensity to serial:
 // ind = outer loop number (where we are in integer signal) 
 void write_retra_serial(int fd, unsigned char * sig_uc, int ind){
-    unsigned char red_intense[] = {83, 24, 3, 7, 255, 240, 80}; 
-    unsigned char red_pre[] = {83, 24, 3, 7};
-    unsigned char red_sig[2];
-    red_sig[0] = sig_uc[ind*2];
-    red_sig[1] = sig_uc[ind*2 + 1]; 
-    unsigned char red_post[] = {50}; 
-    serialPuts(fd, red_pre);
-    serialPuts(fd, red_sig);
-    serialPuts(fd, red_post); 
+    printf("write retra\n"); 
+
+    unsigned char red_sig[7] = {83, 24, 3, 7, sig_uc[ind*2], sig_uc[ind*2 + 1], 80}; 
+    serialPuts(fd, red_sig); 
 }
 
 
@@ -117,15 +110,19 @@ void write_retra_serial(int fd, unsigned char * sig_uc, int ind){
 // pulse_len = length of pulse_profile
 // time_scale = switching time in milliseconds 
 void exec_pulse(int * pulse_profile, int time_scale, int pulse_len){
-    ind = 0;
+    printf("exec pulse\n"); 
+    printf("pulse_len = %d\n", pulse_len); 
+    printf("time scale = %d\n", time_scale); 
+    int ind = 0;
     unsigned int t0;
     unsigned int t1;
     int pulse_val; 
     t0 = millis(); 
     while(ind < pulse_len){
-        // calculate ind: TODO:will this work?
+        // calculate ind: 
         t1 = millis(); 
         ind = (t1 - t0) / time_scale;
+
         if(ind < pulse_len){
             // get pulse val from pulse_profile:
             pulse_val = pulse_profile[ind];
@@ -148,14 +145,15 @@ void exec_pulse(int * pulse_profile, int time_scale, int pulse_len){
 // execute pulses when seq > 0 
 // update intensity when it changes:
 void exec_experiment(int fd, unsigned char * seq, int time_scale_super, int * pulse_profile, int seq_len, int pulse_len){
-    ind = 0;
+    int ind = 0;
     unsigned int t0;
     unsigned int t1; 
-    int time_scale_sub = seq_len / pulse_len; 
+    int time_scale_sub = time_scale_super / pulse_len; 
+
     unsigned char byte1; unsigned char byte2; 
     unsigned char old_byte1 = 255; unsigned char old_byte2 = 240; 
     int seq_val;
-    int prev_ind = 0; 
+    int prev_ind = -1; 
     t0 = millis();
     while(ind < seq_len){
         t1 = millis();
@@ -173,7 +171,9 @@ void exec_experiment(int fd, unsigned char * seq, int time_scale_super, int * pu
             // get the next bytes:
             byte1 = seq[2*ind];
             byte2 = seq[2*ind + 1];
-        
+       
+            printf("bytes = %u,%u\n", byte1, byte2); 
+ 
             // if bytes are different --> change stim intensity: // TODO: won't this system lead to big delays?
             if(byte1 != old_byte1 || byte2 != old_byte2){
                 write_retra_serial(fd, seq, ind);      
@@ -185,6 +185,9 @@ void exec_experiment(int fd, unsigned char * seq, int time_scale_super, int * pu
             if(byte1 > 0 || byte2 > 0){ 
                 exec_pulse(pulse_profile, time_scale_sub, pulse_len); 
             }
+
+            printf("changed stuff\n"); 
+
         }
     }
 }
@@ -227,7 +230,7 @@ int read_csf(const char * fn, int ** seq){
 void master(int seq_tscale){
     // set up raspi:
     int fd; 
-    //Tfd = init_comm(); 
+    fd = init_comm(); 
     
     // load in pulse profile:
     int * pulse_profile;
@@ -270,8 +273,14 @@ void master(int seq_tscale){
         c = 1; 
     }
 
+    printf("starting\n"); 
+
     // begin execution:
     exec_experiment(fd, seq_uc, seq_tscale, pulse_profile, seq_len, pulse_len); 
+
+    // turn off led...disable all
+    unsigned char off_sig[] = {79, 127, 80};
+    serialPuts(fd, off_sig); 
 
 }
 
@@ -279,7 +288,7 @@ void master(int seq_tscale){
 
 int main(){
     
-    int seq_tscale = 500; // switch sequences every 500 ms
+    int seq_tscale = 3000; // switch sequences every 500 ms
     master(seq_tscale);
 
 }
